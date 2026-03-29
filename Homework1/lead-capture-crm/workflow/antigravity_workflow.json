@@ -1,0 +1,70 @@
+{
+  "name": "lead-capture-crm",
+  "description": "Capture leads via HTTP webhook, process, sync to Google Sheets CRM, AI categorise with Gemini.",
+  "version": "1.0.0",
+  "trigger": {
+    "type": "http_webhook",
+    "config": {
+      "path": "/webhook/lead",
+      "method": "POST",
+      "auth": "hmac_sha256",
+      "content_type": "application/json"
+    }
+  },
+  "steps": [
+    {
+      "id": "step_1_validate",
+      "name": "Validate & Process Lead",
+      "type": "function",
+      "config": {
+        "module": "functions.process_lead",
+        "function": "process_lead",
+        "input": "{{ trigger.body }}",
+        "output_key": "processed_lead"
+      }
+    },
+    {
+      "id": "step_2_sheets",
+      "name": "Append to Google Sheets CRM",
+      "type": "function",
+      "depends_on": ["step_1_validate"],
+      "config": {
+        "module": "functions.sheets_connector",
+        "function": "append_lead_to_sheet",
+        "input": "{{ steps.step_1_validate.processed_lead }}",
+        "output_key": "sheet_result"
+      }
+    },
+    {
+      "id": "step_3_ai",
+      "name": "AI Categorisation (Gemini)",
+      "type": "ai_completion",
+      "depends_on": ["step_1_validate"],
+      "config": {
+        "module": "functions.ai_completion",
+        "function": "categorise_and_summarise",
+        "input": "{{ steps.step_1_validate.processed_lead }}",
+        "output_key": "ai_result",
+        "model": "gemini-1.5-flash",
+        "max_tokens": 256
+      }
+    },
+    {
+      "id": "step_4_respond",
+      "name": "Build & Return Response",
+      "type": "response",
+      "depends_on": ["step_2_sheets", "step_3_ai"],
+      "config": {
+        "status_code": 200,
+        "body": {
+          "status": "success",
+          "lead_id": "{{ steps.step_1_validate.processed_lead.lead_id }}",
+          "crm_row": "{{ steps.step_2_sheets.sheet_result.updatedRange }}",
+          "ai_summary": "{{ steps.step_3_ai.ai_result.summary }}",
+          "ai_category": "{{ steps.step_3_ai.ai_result.category }}",
+          "ai_priority": "{{ steps.step_3_ai.ai_result.priority }}"
+        }
+      }
+    }
+  ]
+}
