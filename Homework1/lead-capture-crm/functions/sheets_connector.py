@@ -16,7 +16,7 @@ load_dotenv()
 
 SPREADSHEET_ID   = os.getenv('GOOGLE_SHEETS_SPREADSHEET_ID')
 CREDENTIALS_FILE = os.getenv('GOOGLE_SHEETS_CREDENTIALS_JSON', 'service_account.json')
-SHEET_NAME       = 'Leads'
+SHEET_NAME       = 'Sayfa1'
 CSV_PATH         = Path(__file__).parent.parent / 'data' / 'crm_leads.csv'
 
 COLUMN_ORDER = [
