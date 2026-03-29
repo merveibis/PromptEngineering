@@ -42,8 +42,8 @@ pytest tests/ -v
 
 ## Dataset
 
-Kaggle B2B Sales Lead Dataset (CC0 Public Domain)
-https://www.kaggle.com/datasets/ananthr1/b2b-sales-lead-data
+Kaggle Marketing Agency B2B Leads Dataset (ODC PDDL — Public Domain)
+https://www.kaggle.com/datasets/getivan/marketing-agency-b2b-leads
 
 ## Workflow
 

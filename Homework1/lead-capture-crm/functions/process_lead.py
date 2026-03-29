@@ -2,8 +2,9 @@
 process_lead.py — Lead Data Processing & Mapping Function
 
 Maps raw webhook payload -> standardised CRM schema.
-Data source: Kaggle B2B Sales Lead Dataset field structure.
-URL: https://www.kaggle.com/datasets/ananthr1/b2b-sales-lead-data
+Data source: Kaggle Marketing Agency B2B Leads Dataset field structure.
+URL: https://www.kaggle.com/datasets/getivan/marketing-agency-b2b-leads
+License: ODC Public Domain Dedication and Licence (PDDL)
 """
 
 import uuid, re
