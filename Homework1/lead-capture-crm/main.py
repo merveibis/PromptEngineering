@@ -1,8 +1,9 @@
 """
-main.py — Lead Capture HTTP Webhook (Antigravity Trigger)
+main.py — Lead Capture HTTP Webhook (Google Antigravity Trigger)
 
+Platform:  Google Antigravity (Agents + Workflows)
 Endpoint:  POST /webhook/lead
-Sequence:  Receive -> Validate -> Process -> Sheets -> AI -> Respond
+Sequence:  Receive -> Validate -> Process -> CRM -> AI Completion -> Respond
 """
 
 import os, json, hmac, hashlib

@@ -1,7 +1,10 @@
 """
-ai_completion.py — LLM Completion Step (Google Gemini)
+ai_completion.py — Google Antigravity AI Completion Step (Step 3)
 
-Uses Gemini 1.5 Flash to:
+Platform: Google Antigravity (Agents + Workflows)
+Model:    Google Gemini 2.0 Flash Lite
+
+Uses Gemini 2.0 Flash Lite to:
   1. Categorise lead priority: HOT / WARM / COLD
   2. Identify industry vertical
   3. Generate a one-sentence sales rep summary
@@ -14,7 +17,7 @@ from dotenv import load_dotenv
 load_dotenv()
 genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
 
-MODEL_NAME = 'gemini-1.5-flash'
+MODEL_NAME = 'gemini-2.0-flash-lite'
 
 SYSTEM_PROMPT = """You are a B2B sales intelligence assistant.
 Given a lead record, you output ONLY valid JSON with these keys:

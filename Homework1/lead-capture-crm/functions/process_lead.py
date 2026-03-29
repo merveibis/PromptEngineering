@@ -1,10 +1,11 @@
 """
-process_lead.py — Lead Data Processing & Mapping Function
+process_lead.py — Google Antigravity Processing Function (Step 1)
 
 Maps raw webhook payload -> standardised CRM schema.
-Data source: Kaggle Marketing Agency B2B Leads Dataset field structure.
-URL: https://www.kaggle.com/datasets/getivan/marketing-agency-b2b-leads
-License: ODC Public Domain Dedication and Licence (PDDL)
+Platform:    Google Antigravity (Agents + Workflows)
+Data source: Kaggle Marketing Agency B2B Leads Dataset
+URL:         https://www.kaggle.com/datasets/getivan/marketing-agency-b2b-leads
+License:     ODC Public Domain Dedication and Licence (PDDL)
 """
 
 import uuid, re
