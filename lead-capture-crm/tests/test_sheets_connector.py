@@ -4,8 +4,11 @@ import pytest
 from unittest.mock import patch, MagicMock
 
 
+@patch('functions.sheets_connector.CREDENTIALS_FILE', 'service_account.json')
+@patch('functions.sheets_connector.SPREADSHEET_ID', 'fake-spreadsheet-id')
+@patch('os.path.exists', return_value=True)
 @patch('functions.sheets_connector._get_service')
-def test_append_lead_to_sheet(mock_service):
+def test_append_lead_to_sheet(mock_service, mock_exists):
     """Test that lead data is correctly formatted and sent to Sheets API."""
     mock_sheets = MagicMock()
     mock_service.return_value = mock_sheets
