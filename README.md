@@ -16,18 +16,6 @@ HTTP Webhook Trigger  →  process_lead()  →  CRM (Sheets / CSV)  →  Gemini 
 
 ---
 
-## 5-Criteria Compliance
-
-| # | Criterion | How It Is Met | File |
-|---|-----------|---------------|------|
-| 1 | **Real trigger / data input** | `POST /webhook/lead` endpoint accepts JSON payloads and verifies them with HMAC-SHA256. `GET /health` checks server availability. | `main.py` |
-| 2 | **Data processing** | `process_lead()` validates required fields, normalises e-mail, maps 16 industry and 10 source types to a controlled vocabulary, computes a weighted lead score (0–100), generates a UUID, and converts the payload to an 18-field CRM schema. | `functions/process_lead.py` |
-| 3 | **External system connection** | `append_lead_to_sheet()` connects to the Google Sheets API v4 via OAuth2 service account (configured) or writes to `data/crm_leads.csv` as a fallback. Returns a CRM row reference on every call. | `functions/sheets_connector.py` |
-| 4 | **AI genuinely used** | `categorise_and_summarise()` calls Gemini 2.0 Flash Lite for each lead. JSON output: `category`, `priority` (HOT/WARM/COLD), `summary` (≤30-word sales brief). | `functions/ai_completion.py` |
-| 5 | **End-to-end workflow** | `demo_pipeline.py` runs all 20 Kaggle leads through the full pipeline. All steps execute in sequence and produce a `crm_leads.csv` output. | `demo_pipeline.py` |
-
----
-
 ## Project Structure
 
 ```
