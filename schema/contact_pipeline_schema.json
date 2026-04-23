@@ -1,0 +1,286 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "contact_pipeline_schema",
+  "title": "Contact Form Pipeline Schema",
+  "description": "Full data schema for the HW2 Contact Form Pipeline: HTTP POST → Antigravity Connector → Google Sheets / CRM → AI Completion",
+  "version": "1.0.0",
+  "platform": "Google Antigravity (Agents + Workflows)",
+  "endpoint": "POST /webhook/contact",
+
+  "pipeline": {
+    "steps": [
+      {
+        "id": "step_0_trigger",
+        "name": "HTTP Webhook Trigger",
+        "file": "main.py",
+        "input": "$ref#/definitions/ContactRequest",
+        "output": "$ref#/definitions/ContactRequest",
+        "errors": {
+          "400": "Invalid JSON payload",
+          "401": "Invalid HMAC-SHA256 signature",
+          "422": "Missing or invalid fields"
+        }
+      },
+      {
+        "id": "step_1_process",
+        "name": "Validate & Process Contact",
+        "file": "functions/process_contact.py",
+        "function": "process_contact",
+        "input": "$ref#/definitions/ContactRequest",
+        "output": "$ref#/definitions/ProcessedContact",
+        "errors": {
+          "missing_fields": "Returns {error: 'Missing required fields: [...]'}",
+          "invalid_email":  "Returns {error: 'Invalid email address: ...'}"
+        }
+      },
+      {
+        "id": "step_2_sheets",
+        "name": "Append to Google Sheets CRM",
+        "file": "functions/sheets_connector.py",
+        "function": "append_contact_to_sheet",
+        "input": "$ref#/definitions/ProcessedContact",
+        "output": "$ref#/definitions/SheetsResult",
+        "primary":  "Google Sheets API v4 — tab: Contacts",
+        "fallback": "data/contacts.csv",
+        "columns":  ["contact_id", "created_at", "name", "email", "message", "status"]
+      },
+      {
+        "id": "step_3_ai",
+        "name": "AI Categorisation",
+        "file": "functions/ai_completion.py",
+        "function": "categorise_and_summarise",
+        "model": "gemini-2.0-flash-lite",
+        "input": "$ref#/definitions/ProcessedContact",
+        "output": "$ref#/definitions/AIResult"
+      },
+      {
+        "id": "step_4_response",
+        "name": "Return HTTP 200 Response",
+        "file": "main.py",
+        "input": {
+          "processed": "$ref#/definitions/ProcessedContact",
+          "sheets":    "$ref#/definitions/SheetsResult",
+          "ai":        "$ref#/definitions/AIResult"
+        },
+        "output": "$ref#/definitions/ContactResponse"
+      }
+    ]
+  },
+
+  "definitions": {
+
+    "ContactRequest": {
+      "description": "Incoming HTTP POST JSON body — exactly 3 fields",
+      "type": "object",
+      "required": ["name", "email", "message"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Full name of the contact",
+          "example": "Merve İbiş"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "minLength": 1,
+          "description": "Contact email address",
+          "example": "merveeibis@gmail.com"
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Free-text message body",
+          "example": "Ürününüz hakkında bilgi almak istiyorum."
+        }
+      }
+    },
+
+    "ProcessedContact": {
+      "description": "Normalised and enriched contact record produced by process_contact()",
+      "type": "object",
+      "required": ["contact_id", "name", "email", "message", "status", "source", "created_at"],
+      "properties": {
+        "contact_id": {
+          "type": "string",
+          "pattern": "^[A-F0-9]{8}$",
+          "description": "Unique identifier — first 8 chars of UUIDv4, uppercased",
+          "example": "ED80F438"
+        },
+        "name": {
+          "type": "string",
+          "description": "Whitespace-stripped sender name",
+          "example": "Merve İbiş"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Lowercase-normalised, regex-validated email",
+          "example": "merveeibis@gmail.com"
+        },
+        "message": {
+          "type": "string",
+          "description": "Whitespace-stripped message body",
+          "example": "Ürününüz hakkında bilgi almak istiyorum."
+        },
+        "full_name": {
+          "type": "string",
+          "description": "Alias of name — for AI completion compatibility",
+          "example": "Merve İbiş"
+        },
+        "company_name": {
+          "type": "string",
+          "const": "N/A",
+          "description": "Placeholder — contact form does not collect company"
+        },
+        "status": {
+          "type": "string",
+          "const": "New",
+          "description": "Initial CRM status"
+        },
+        "source": {
+          "type": "string",
+          "const": "Contact Form",
+          "description": "Traffic source tag"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "UTC ISO-8601 timestamp assigned at processing time",
+          "example": "2026-04-23T10:00:00+00:00"
+        }
+      }
+    },
+
+    "SheetsResult": {
+      "description": "Response from Google Sheets API append or CSV fallback",
+      "type": "object",
+      "properties": {
+        "spreadsheetId": {
+          "type": "string",
+          "description": "Google Sheets document ID (Sheets path only)",
+          "example": "1jNu4pxL61yd4tIwq09fMwQC5OQhET7CFXeowwBqV9r0"
+        },
+        "updatedRange": {
+          "type": "string",
+          "description": "A1-notation range written (Sheets) or CSV row reference (fallback)",
+          "example": "Contacts!A2:F2"
+        },
+        "updatedRows": {
+          "type": "integer",
+          "const": 1,
+          "description": "Always 1 — one row per request"
+        },
+        "updatedColumns": {
+          "type": "integer",
+          "const": 6,
+          "description": "contact_id, created_at, name, email, message, status"
+        }
+      }
+    },
+
+    "AIResult": {
+      "description": "Gemini 2.0 Flash Lite categorisation output",
+      "type": "object",
+      "required": ["category", "priority", "summary"],
+      "properties": {
+        "category": {
+          "type": "string",
+          "description": "Business domain category inferred from the message",
+          "examples": ["Technology", "Marketing", "Sales", "Support", "Partnership"]
+        },
+        "priority": {
+          "type": "string",
+          "enum": ["HOT", "WARM", "COLD"],
+          "description": "Lead urgency score assigned by the AI model"
+        },
+        "summary": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "≤30-word sales brief of the contact message",
+          "example": "Prospect seeking product information; warm lead for follow-up."
+        }
+      }
+    },
+
+    "ContactResponse": {
+      "description": "HTTP 200 JSON body returned to the caller on success",
+      "type": "object",
+      "required": ["status", "contact_id", "name", "email", "message", "crm_row", "ai_summary", "ai_category", "ai_priority"],
+      "properties": {
+        "status": {
+          "type": "string",
+          "const": "success"
+        },
+        "contact_id": {
+          "type": "string",
+          "description": "Unique contact identifier",
+          "example": "ED80F438"
+        },
+        "name": {
+          "type": "string",
+          "example": "Merve İbiş"
+        },
+        "email": {
+          "type": "string",
+          "example": "merveeibis@gmail.com"
+        },
+        "message": {
+          "type": "string",
+          "example": "Ürününüz hakkında bilgi almak istiyorum."
+        },
+        "crm_row": {
+          "type": "string",
+          "description": "CRM location where the record was written",
+          "example": "Contacts!A2:F2"
+        },
+        "ai_summary": {
+          "type": "string",
+          "example": "Prospect seeking product information; warm lead for follow-up."
+        },
+        "ai_category": {
+          "type": "string",
+          "example": "Technology"
+        },
+        "ai_priority": {
+          "type": "string",
+          "enum": ["HOT", "WARM", "COLD"],
+          "example": "WARM"
+        }
+      }
+    },
+
+    "ErrorResponse": {
+      "description": "Error response body for 400 / 401 / 422",
+      "type": "object",
+      "required": ["error"],
+      "properties": {
+        "error": {
+          "type": "string",
+          "examples": [
+            "Invalid JSON payload",
+            "Invalid signature",
+            "Missing required fields: ['email']",
+            "Invalid email address: not-an-email"
+          ]
+        }
+      }
+    },
+
+    "GoogleSheetsRow": {
+      "description": "Exact column layout written to the Contacts sheet tab",
+      "type": "array",
+      "prefixItems": [
+        { "title": "contact_id",  "type": "string", "example": "ED80F438" },
+        { "title": "created_at",  "type": "string", "example": "2026-04-23T10:00:00+00:00" },
+        { "title": "name",        "type": "string", "example": "Merve İbiş" },
+        { "title": "email",       "type": "string", "example": "merveeibis@gmail.com" },
+        { "title": "message",     "type": "string", "example": "Ürününüz hakkında bilgi almak istiyorum." },
+        { "title": "status",      "type": "string", "example": "New" }
+      ],
+      "minItems": 6,
+      "maxItems": 6
+    }
+  }
+}
