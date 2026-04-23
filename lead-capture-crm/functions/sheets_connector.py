@@ -160,3 +160,76 @@ def append_contact_to_sheet(contact: dict) -> dict:
         except Exception:
             pass
     return _contact_csv_append(contact)
+
+
+# ── HW3: Validated + AI-classified leads (name, email, message + metadata) ───
+
+HW3_COLUMNS = [
+    'contact_id', 'created_at', 'name', 'email', 'message',
+    'validation_status', 'validation_errors', 'intent', 'urgency',
+]
+HW3_CSV_PATH = Path(__file__).parent.parent / 'data' / 'hw3_leads.csv'
+HW3_SHEET    = 'HW3_Leads'
+
+
+def _ensure_hw3_sheet(service) -> None:
+    """Create the 'HW3_Leads' sheet tab if it doesn't already exist."""
+    meta = service.get(spreadsheetId=SPREADSHEET_ID).execute()
+    existing = {s['properties']['title'] for s in meta.get('sheets', [])}
+    if HW3_SHEET not in existing:
+        service.batchUpdate(
+            spreadsheetId=SPREADSHEET_ID,
+            body={'requests': [{'addSheet': {'properties': {'title': HW3_SHEET}}}]}
+        ).execute()
+
+
+def _hw3_sheets_append(record: dict) -> dict:
+    service = _get_service()
+    _ensure_hw3_sheet(service)
+    result = service.values().get(
+        spreadsheetId=SPREADSHEET_ID,
+        range=f'{HW3_SHEET}!A1:I1'
+    ).execute()
+    if not result.get('values'):
+        service.values().update(
+            spreadsheetId=SPREADSHEET_ID,
+            range=f'{HW3_SHEET}!A1',
+            valueInputOption='RAW',
+            body={'values': [[c.replace('_', ' ').title() for c in HW3_COLUMNS]]}
+        ).execute()
+    row = [str(record.get(col, '')) for col in HW3_COLUMNS]
+    result = service.values().append(
+        spreadsheetId=SPREADSHEET_ID,
+        range=f'{HW3_SHEET}!A1',
+        valueInputOption='USER_ENTERED',
+        insertDataOption='INSERT_ROWS',
+        body={'values': [row]}
+    ).execute()
+    return result.get('updates', {})
+
+
+def _hw3_csv_append(record: dict) -> dict:
+    HW3_CSV_PATH.parent.mkdir(parents=True, exist_ok=True)
+    write_header = not HW3_CSV_PATH.exists()
+    with open(HW3_CSV_PATH, 'a', newline='', encoding='utf-8') as f:
+        writer = csv.DictWriter(f, fieldnames=HW3_COLUMNS)
+        if write_header:
+            writer.writeheader()
+        writer.writerow({col: record.get(col, '') for col in HW3_COLUMNS})
+    with open(HW3_CSV_PATH, 'r', encoding='utf-8') as f:
+        row_count = sum(1 for _ in f) - 1
+    return {'updatedRange': f'hw3_leads.csv!row{row_count}', 'updatedRows': 1}
+
+
+def append_hw3_to_sheet(record: dict) -> dict:
+    """
+    Append a HW3 validated + AI-classified record to CRM.
+    Writes ALL records (Valid and Invalid) — no data is ever discarded.
+    Uses Google Sheets 'HW3_Leads' tab when configured, otherwise hw3_leads.csv.
+    """
+    if SPREADSHEET_ID and os.path.exists(CREDENTIALS_FILE):
+        try:
+            return _hw3_sheets_append(record)
+        except Exception:
+            pass
+    return _hw3_csv_append(record)

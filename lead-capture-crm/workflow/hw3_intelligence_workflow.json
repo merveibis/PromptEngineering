@@ -1,0 +1,99 @@
+{
+  "name": "hw3-validation-intelligence-pipeline",
+  "description": "HW3: Validate and classify contact form submissions with AI-powered Intent/Urgency analysis. Invalid leads are flagged (not discarded) and all records are persisted to Google Sheets.",
+  "version": "3.0.0",
+  "trigger": {
+    "type": "http_webhook",
+    "config": {
+      "path": "/webhook/hw3",
+      "method": "POST",
+      "content_type": "application/json",
+      "expected_fields": ["name", "email", "message"],
+      "note": "All payloads are accepted regardless of validity — validation is handled inside the pipeline"
+    }
+  },
+  "steps": [
+    {
+      "id": "step_1_validate",
+      "name": "Validate & Flag Lead",
+      "type": "function",
+      "config": {
+        "module": "functions.validate_lead_hw3",
+        "function": "validate_and_flag",
+        "input": "{{ trigger.body }}",
+        "output_key": "flagged_record",
+        "behaviour": "Never returns an error — sets validation_status=Valid|Invalid and logs validation_errors",
+        "validates": {
+          "field_presence": ["name", "email", "message"],
+          "email_format": "RFC-5321 regex"
+        }
+      }
+    },
+    {
+      "id": "step_2_ai",
+      "name": "AI Intent & Urgency Classification (Gemini)",
+      "type": "ai_completion",
+      "depends_on": ["step_1_validate"],
+      "config": {
+        "module": "functions.ai_intent_urgency",
+        "function": "classify_intent_urgency",
+        "input": "{{ steps.step_1_validate.flagged_record }}",
+        "output_key": "ai_result",
+        "model": "gemini-2.0-flash-lite",
+        "max_tokens": 128,
+        "output_schema": {
+          "intent": "Sales | Support | Partnership | Inquiry | Complaint | Other",
+          "urgency": "High | Medium | Low"
+        },
+        "note": "If message is empty (invalid lead), returns default Other/Low without calling API"
+      }
+    },
+    {
+      "id": "step_3_sheets",
+      "name": "Persist Full Record to Google Sheets CRM",
+      "type": "connector",
+      "depends_on": ["step_1_validate", "step_2_ai"],
+      "config": {
+        "connector": "google_sheets",
+        "module": "functions.sheets_connector",
+        "function": "append_hw3_to_sheet",
+        "input": "{{ merge(steps.step_1_validate.flagged_record, steps.step_2_ai.ai_result) }}",
+        "output_key": "sheet_result",
+        "destination": "Google Sheets — HW3_Leads tab OR hw3_leads.csv (fallback)",
+        "columns": [
+          "contact_id", "created_at", "name", "email", "message",
+          "validation_status", "validation_errors", "intent", "urgency"
+        ],
+        "note": "ALL records are written regardless of validation_status — no lead is ever discarded"
+      }
+    },
+    {
+      "id": "step_4_respond",
+      "name": "Return Full Record Response",
+      "type": "response",
+      "depends_on": ["step_3_sheets"],
+      "config": {
+        "status_code": 200,
+        "body": {
+          "status": "success",
+          "contact_id":        "{{ steps.step_1_validate.flagged_record.contact_id }}",
+          "name":              "{{ steps.step_1_validate.flagged_record.name }}",
+          "email":             "{{ steps.step_1_validate.flagged_record.email }}",
+          "message":           "{{ steps.step_1_validate.flagged_record.message }}",
+          "validation_status": "{{ steps.step_1_validate.flagged_record.validation_status }}",
+          "validation_errors": "{{ steps.step_1_validate.flagged_record.validation_errors }}",
+          "intent":            "{{ steps.step_2_ai.ai_result.intent }}",
+          "urgency":           "{{ steps.step_2_ai.ai_result.urgency }}",
+          "crm_row":           "{{ steps.step_3_sheets.sheet_result.updatedRange }}"
+        }
+      }
+    }
+  ],
+  "architecture": "Input ({name, email, message}) → Validation (Email/Format Check) → AI Analysis (Intent/Urgency) → CRM/Sheets (Full Record + Metadata)",
+  "hw3_requirements": {
+    "validation_logic": "Missing fields + email format check; both conditions logged in validation_errors",
+    "lead_flagging": "validation_status column: 'Valid' | 'Invalid'; invalid leads are saved, not discarded",
+    "ai_classification": "Gemini 2.0 Flash Lite classifies intent (6 categories) and urgency (3 levels)",
+    "data_persistence": "Every submission (valid or invalid) is written to Google Sheets HW3_Leads tab with full metadata"
+  }
+}

@@ -1,0 +1,10 @@
+contact_id,created_at,name,email,message,validation_status,validation_errors,intent,urgency
+97447C00,2026-04-23T12:17:12.658261+00:00,Elif Yılmaz,elif.yilmaz@techcorp.io,We need to purchase 50 licenses ASAP before end of quarter. Please send pricing immediately.,Valid,,Other,Medium
+A71847AD,2026-04-23T12:17:12.952537+00:00,James Chen,j.chen@startup.com,I'm having trouble setting up the API integration. Can you help me this week?,Valid,,Other,Medium
+272967BC,2026-04-23T12:17:13.108492+00:00,Maria Santos,maria@agencypartners.eu,We are interested in exploring a white-label reseller partnership for the European market.,Valid,,Other,Medium
+C1DDC4E2,2026-04-23T12:17:13.387130+00:00,Kemal Aydın,kemal@university.edu.tr,"Merhaba, ürününüz hakkında genel bilgi almak istiyorum.",Valid,,Other,Medium
+650A9A04,2026-04-23T12:17:13.774052+00:00,Anna Kovacs,anna.kovacs@enterprise.hu,Your service has been down for 3 hours and our production is blocked. This is unacceptable!,Valid,,Other,Medium
+7C97E400,2026-04-23T12:17:14.082352+00:00,Bob Missing,,I want to learn more about your product.,Invalid,Missing required field: 'email',Other,Medium
+ABB8A03B,2026-04-23T12:17:14.278357+00:00,Carol Badmail,not-an-email-address,Please contact me regarding your enterprise plan.,Invalid,Invalid email format: 'not-an-email-address',Other,Medium
+44FF6C06,2026-04-23T12:17:14.395573+00:00,,,Just a message with no contact info at all.,Invalid,Missing required field: 'name'; Missing required field: 'email',Other,Medium
+D4D8A884,2026-04-23T12:17:14.576302+00:00,,,,Invalid,Missing required field: 'name'; Missing required field: 'email'; Missing required field: 'message',Other,Low
