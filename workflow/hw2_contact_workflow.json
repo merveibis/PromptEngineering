@@ -1,0 +1,83 @@
+{
+  "name": "hw2-contact-form-pipeline",
+  "description": "HW2: Capture contact form submissions via HTTP POST and sync to Google Sheets CRM.",
+  "version": "2.0.0",
+  "trigger": {
+    "type": "http_webhook",
+    "config": {
+      "path": "/webhook/contact",
+      "method": "POST",
+      "content_type": "application/json",
+      "required_fields": ["name", "email", "message"]
+    }
+  },
+  "steps": [
+    {
+      "id": "step_1_validate",
+      "name": "Validate & Process Contact",
+      "type": "function",
+      "config": {
+        "module": "functions.process_contact",
+        "function": "process_contact",
+        "input": "{{ trigger.body }}",
+        "output_key": "processed_contact",
+        "validates": ["name", "email", "message"]
+      }
+    },
+    {
+      "id": "step_2_sheets",
+      "name": "Append to Google Sheets CRM",
+      "type": "connector",
+      "depends_on": ["step_1_validate"],
+      "config": {
+        "connector": "google_sheets",
+        "module": "functions.sheets_connector",
+        "function": "append_contact_to_sheet",
+        "input": "{{ steps.step_1_validate.processed_contact }}",
+        "output_key": "sheet_result",
+        "destination": "Google Sheets — Contacts tab OR contacts.csv (fallback)"
+      }
+    },
+    {
+      "id": "step_3_ai",
+      "name": "AI Categorisation (Gemini)",
+      "type": "ai_completion",
+      "depends_on": ["step_1_validate"],
+      "config": {
+        "module": "functions.ai_completion",
+        "function": "categorise_and_summarise",
+        "input": "{{ steps.step_1_validate.processed_contact }}",
+        "output_key": "ai_result",
+        "model": "gemini-2.0-flash-lite",
+        "max_tokens": 256
+      }
+    },
+    {
+      "id": "step_4_respond",
+      "name": "Return Success Response",
+      "type": "response",
+      "depends_on": ["step_2_sheets", "step_3_ai"],
+      "config": {
+        "status_code": 200,
+        "body": {
+          "status": "success",
+          "contact_id": "{{ steps.step_1_validate.processed_contact.contact_id }}",
+          "crm_row": "{{ steps.step_2_sheets.sheet_result.updatedRange }}",
+          "name": "{{ steps.step_1_validate.processed_contact.name }}",
+          "email": "{{ steps.step_1_validate.processed_contact.email }}",
+          "message": "{{ steps.step_1_validate.processed_contact.message }}",
+          "ai_summary": "{{ steps.step_3_ai.ai_result.summary }}",
+          "ai_category": "{{ steps.step_3_ai.ai_result.category }}",
+          "ai_priority": "{{ steps.step_3_ai.ai_result.priority }}"
+        }
+      }
+    }
+  ],
+  "architecture": "HTTP POST ({name, email, message}) → Antigravity Connector → Google Sheets / CRM → AI Completion",
+  "hw2_requirements": {
+    "endpoint": "POST /webhook/contact",
+    "payload": {"name": "string", "email": "string", "message": "string"},
+    "integration": "Google Sheets API v4 via Antigravity-generated connector",
+    "storage": "New row per successful request in 'Contacts' sheet tab or contacts.csv"
+  }
+}
