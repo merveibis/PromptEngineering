@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Google Antigravity — Contact Pipeline Architecture</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #1a1e2e;
+    font-family: 'Courier New', monospace;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 40px 20px;
+  }
+
+  .canvas {
+    width: 780px;
+  }
+
+  /* Title bar */
+  .title-bar {
+    background: #252a3d;
+    border: 1px solid #3a4060;
+    border-radius: 6px 6px 0 0;
+    padding: 10px 18px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 0;
+  }
+  .dot { width: 12px; height: 12px; border-radius: 50%; }
+  .dot.red    { background: #ff5f57; }
+  .dot.yellow { background: #febc2e; }
+  .dot.green  { background: #28c840; }
+  .title-bar span {
+    color: #8892b0;
+    font-size: 13px;
+    margin-left: auto;
+    margin-right: auto;
+    letter-spacing: 0.5px;
+  }
+
+  /* Main container */
+  .diagram {
+    background: #1e2235;
+    border: 1px solid #3a4060;
+    border-top: none;
+    border-radius: 0 0 6px 6px;
+    padding: 32px 40px 36px;
+  }
+
+  /* Pipeline header box */
+  .pipeline-header {
+    border: 1px solid #4a5280;
+    border-radius: 4px;
+    padding: 10px 20px;
+    text-align: center;
+    color: #a8b4d8;
+    font-size: 13px;
+    letter-spacing: 0.4px;
+    margin-bottom: 28px;
+  }
+
+  /* Row layouts */
+  .row {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    margin-bottom: 0;
+  }
+
+  /* Boxes */
+  .box {
+    border: 1px solid #4a5280;
+    border-radius: 4px;
+    padding: 14px 18px;
+    color: #c8d4f0;
+    font-size: 11.5px;
+    line-height: 1.7;
+    min-width: 180px;
+    text-align: left;
+  }
+  .box .label {
+    color: #7ec8a0;
+    font-size: 12px;
+    font-weight: bold;
+    margin-bottom: 4px;
+    display: block;
+  }
+  .box .sub {
+    color: #8892b0;
+    font-size: 10.5px;
+    line-height: 1.6;
+  }
+  .box.wide {
+    min-width: 580px;
+    text-align: center;
+  }
+  .box.response {
+    background: #1a2435;
+    border-color: #4a6080;
+    min-width: 420px;
+    text-align: center;
+  }
+  .box.response .label { color: #7eb8d0; }
+
+  /* Arrows */
+  .arrow-down {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 30px;
+    color: #4a5280;
+    font-size: 20px;
+    line-height: 1;
+  }
+  .arrow-right {
+    display: flex;
+    align-items: center;
+    color: #4a5280;
+    font-size: 18px;
+    padding: 0 4px;
+    margin-top: 14px; /* align with box top content */
+  }
+
+  /* Parallel split */
+  .split-row {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 0;
+    position: relative;
+    margin-bottom: 0;
+  }
+  .split-box-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+    max-width: 280px;
+  }
+
+  /* Connector line between two split branches */
+  .h-line {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 1px;
+    background: transparent;
+    position: relative;
+    margin: 0 8px;
+    align-self: flex-start;
+    margin-top: 30px;
+  }
+  .h-line::before {
+    content: '';
+    display: block;
+    width: 24px;
+    height: 1px;
+    background: #4a5280;
+  }
+
+  .badge {
+    display: inline-block;
+    background: #2a3050;
+    border: 1px solid #4a5280;
+    border-radius: 3px;
+    padding: 1px 6px;
+    font-size: 9.5px;
+    color: #7ec8a0;
+    margin-top: 3px;
+  }
+</style>
+</head>
+<body>
+<div class="canvas">
+
+  <!-- Title bar -->
+  <div class="title-bar">
+    <div class="dot red"></div>
+    <div class="dot yellow"></div>
+    <div class="dot green"></div>
+    <span>Google Antigravity — Contact Pipeline Architecture</span>
+  </div>
+
+  <!-- Diagram -->
+  <div class="diagram">
+
+    <!-- Pipeline label -->
+    <div class="pipeline-header">
+      Google Antigravity &mdash; Contact Form Pipeline &nbsp;|&nbsp; POST /webhook/contact
+    </div>
+
+    <!-- STEP 0: Trigger -->
+    <div class="row">
+      <div class="box wide">
+        <span class="label">HTTP Webhook &nbsp;/&nbsp; Trigger</span>
+        <span class="sub">POST /webhook/contact &nbsp;(main.py)<br>
+        Accepts JSON &nbsp;{ name, email, message }&nbsp; &middot; HMAC-SHA256 verification<br>
+        400 Invalid JSON &nbsp;&middot;&nbsp; 401 Bad signature &nbsp;&middot;&nbsp; 422 Missing fields</span>
+      </div>
+    </div>
+
+    <div class="arrow-down">↓</div>
+
+    <!-- STEP 1: process_contact -->
+    <div class="row">
+      <div class="box wide">
+        <span class="label">process_contact() &nbsp;&mdash;&nbsp; Step 1 &nbsp;&mdash;&nbsp; Validate &amp; Process</span>
+        <span class="sub">
+          name &nbsp;→&nbsp; strip &nbsp;&nbsp;|&nbsp;&nbsp;
+          email &nbsp;→&nbsp; lowercase + regex validate &nbsp;&nbsp;|&nbsp;&nbsp;
+          message &nbsp;→&nbsp; strip<br>
+          contact_id: UUID[:8].upper() &nbsp;&middot;&nbsp; created_at: UTC ISO-8601 &nbsp;&middot;&nbsp; status: "New"
+        </span>
+      </div>
+    </div>
+
+    <div class="arrow-down">↓</div>
+
+    <!-- STEP 2 + STEP 3: parallel -->
+    <div class="split-row">
+
+      <!-- Step 2 -->
+      <div class="split-box-wrap">
+        <div class="box">
+          <span class="label">append_contact_to_sheet() &nbsp;— Step 2</span>
+          <span class="sub">
+            Google Sheets API v4 &nbsp;/&nbsp; OAuth2<br>
+            Tab: <em>Contacts</em> &nbsp;(auto-created)<br>
+            Cols: id · date · name · email · msg · status<br>
+            Fallback: <code>data/contacts.csv</code>
+          </span>
+          <span class="badge">Google Sheets CRM</span>
+        </div>
+      </div>
+
+      <!-- H connector -->
+      <div class="h-line"></div>
+
+      <!-- Step 3 -->
+      <div class="split-box-wrap">
+        <div class="box">
+          <span class="label">categorise_and_summarise() &nbsp;— Step 3</span>
+          <span class="sub">
+            Gemini 2.0 Flash Lite<br>
+            category &nbsp;→&nbsp; domain label<br>
+            priority &nbsp;→&nbsp; HOT / WARM / COLD<br>
+            summary &nbsp;→&nbsp; ≤ 30-word brief
+          </span>
+          <span class="badge">AI Completion</span>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="arrow-down">↓</div>
+
+    <!-- STEP 4: Response -->
+    <div class="row">
+      <div class="box response">
+        <span class="label">JSON Response &nbsp;&mdash;&nbsp; HTTP 200</span>
+        <span class="sub">
+          { status, contact_id, name, email, message, crm_row, ai_category, ai_priority, ai_summary }
+        </span>
+      </div>
+    </div>
+
+  </div><!-- /diagram -->
+</div><!-- /canvas -->
+</body>
+</html>
